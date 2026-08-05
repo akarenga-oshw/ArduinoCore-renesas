@@ -100,6 +100,7 @@ static const uint8_t D15 = PIN_D15;
 
 /****** RTC CORE DEFINES *******/
 #define RTC_HOWMANY     1
+#define RTC_CLOCK_SOURCE    RTC_CLOCK_SOURCE_SUBCLK
 
 
 /****** UART CORE DEFINES ******/

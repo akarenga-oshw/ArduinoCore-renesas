@@ -70,11 +70,11 @@ FSP Configuration
     Subclock Stabilization Time (ms): 1000
     
   Clocks
-    XTAL 0Hz
+    XTAL 12000000Hz
     HOCO 48MHz
-    PLL Div /4
-    PLL Mul x12
-    Clock Src: HOCO
+    PLL Div /2
+    PLL Mul x8
+    Clock Src: PLL
     ICLK Div /1
     PCLKA Div /1
     PCLKB Div /2
@@ -83,7 +83,7 @@ FSP Configuration
     FCLK Div /2
     CLKOUT Src: SUBCLK
     CLKOUT Div /1
-    UCLK Src: HOCO
+    UCLK Src: PLL
     
   Pin Configurations
     R7FA4M1AB3CNE.pincfg -> g_bsp_pin_cfg
