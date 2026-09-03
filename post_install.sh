@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-arduino_renesas_core_rules () {
+akarenga_renesas_core_rules () {
     echo ""
-    echo "# Renesas based Arduino Santiago/Portenta H33 bootloader mode UDEV rules"
+    echo "# Akarenga UNO R4 Minima sketch/bootloader mode UDEV rules"
     echo ""
 cat <<EOF
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="2341", MODE:="0666"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="806a", MODE:="0666"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="006a", MODE:="0666"
 EOF
 }
 
@@ -28,7 +29,7 @@ Linux*)
     exit
   fi
 
-  arduino_renesas_core_rules > /etc/udev/rules.d/60-arduino-renesas.rules
+  akarenga_renesas_core_rules > /etc/udev/rules.d/60-akarenga-renesas.rules
 
   # reload udev rules
   echo "Reload rules..."

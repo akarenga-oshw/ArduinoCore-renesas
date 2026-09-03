@@ -236,7 +236,7 @@ const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 
     static const char *const usbd_desc_str[] = {
         [USBD_STR_0] = "",
-        [USBD_STR_MANUF] = "Arduino",
+        [USBD_STR_MANUF] = "Akarenga",
         [USBD_STR_PRODUCT] = USB_NAME,
         [USBD_STR_SERIAL] = idString,
         [USBD_STR_CDC] = "CDC Port",

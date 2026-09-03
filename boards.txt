@@ -13,14 +13,14 @@ minima.build.float-abi=-mfloat-abi=hard
 
 minima.build.board=MINIMA
 minima.build.defines=-DF_CPU=48000000 -DARDUINO_UNOR4_MINIMA -DAKARENGA_UNOR4_MINIMA
-minima.vid.0=0x2341
-minima.pid.0=0x0069
-minima.vid.1=0x2341
-minima.pid.1=0x0369
-minima.upload_port.0.vid=0x2341
-minima.upload_port.0.pid=0x0069
-minima.upload_port.1.vid=0x2341
-minima.upload_port.1.pid=0x0369
+minima.vid.0=0x2886
+minima.pid.0=0x806A
+minima.vid.1=0x2886
+minima.pid.1=0x006A
+minima.upload_port.0.vid=0x2886
+minima.upload_port.0.pid=0x806A
+minima.upload_port.1.vid=0x2886
+minima.upload_port.1.pid=0x006A
 
 minima.compiler.fsp.defines={build.variant.path}/defines.txt
 minima.compiler.fsp.ldflags={build.variant.path}/ldflags.txt
@@ -36,8 +36,8 @@ minima.upload.tool=dfu-util
 minima.upload.tool.default=dfu-util
 minima.upload.protocol=
 minima.upload.transport=
-minima.upload.vid=0x2341
-minima.upload.pid=0x0369
+minima.upload.vid=0x2886
+minima.upload.pid=0x006A
 minima.upload.address=0x00010000
 minima.upload.interface=0
 minima.upload.use_1200bps_touch=false
