@@ -76,7 +76,10 @@ const uint8_t *tud_descriptor_device_cb(void) {
     static tusb_desc_device_t usbd_desc_device = {
         .bLength = sizeof(tusb_desc_device_t),
         .bDescriptorType = TUSB_DESC_DEVICE,
-        .bcdUSB = 0x0200,
+        // 2.01 rather than 2.00: tells the host a BOS descriptor is available.
+        // Hosts do not ask for it below 0x0201, so this must stay in sync with
+        // tud_descriptor_bos_cb() below.
+        .bcdUSB = 0x0201,
         .bDeviceClass = TUSB_CLASS_CDC,
         .bDeviceSubClass = MISC_SUBCLASS_COMMON,
         .bDeviceProtocol = MISC_PROTOCOL_IAD,
@@ -216,6 +219,114 @@ void __SetupUSBDescriptor() {
             }
         }
     }
+}
+
+//--------------------------------------------------------------------+
+// BOS Descriptor / Microsoft OS 2.0 Descriptors
+//--------------------------------------------------------------------+
+
+// Windows has no in-box driver for a DFU interface, so dfu-util (libusb)
+// cannot open the DFU runtime interface to send DFU_DETACH, which is how the
+// IDE puts a running board into the bootloader. Declaring these lets Windows
+// 8.1 and later bind WinUSB to that interface on their own, with no .inf
+// driver package and so no code signing certificate. Other hosts read the BOS
+// descriptor and ignore the Microsoft part.
+//
+// The level a feature descriptor sits at decides what it applies to. This
+// device is composite, so WinUSB must be asked for on the DFU runtime
+// function ALONE: claiming it at device or configuration level would take the
+// CDC function with it and the serial port would disappear.
+//
+//   Set header
+//   `- configuration subset
+//      `- function subset (bFirstInterface)
+//         `- feature descriptors  -> that one function
+//
+// tud_descriptor_configuration_cb() above assigns interface numbers in order,
+// CDC first taking two, then DFU. Both are installed on the same condition
+// (__USBInstallSerial), so whenever the DFU runtime interface exists at all it
+// is interface 2.
+#define USBD_ITF_DFU_RT   (2)
+
+#define VENDOR_REQUEST_MICROSOFT  2
+
+// set header 0x0A + configuration subset 0x08 + function subset 0x08
+//   + compatible ID 0x14 + registry property 0x84
+#define MS_OS_20_DESC_LEN   0xB2
+
+#define BOS_TOTAL_LEN       (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
+
+static const uint8_t desc_bos[] = {
+    // total length, number of device caps
+    TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
+
+    // descriptor set length, vendor request code used to fetch it
+    TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, VENDOR_REQUEST_MICROSOFT)
+};
+
+// Invoked when received GET BOS DESCRIPTOR request
+const uint8_t *tud_descriptor_bos_cb(void) {
+    return desc_bos;
+}
+
+static const uint8_t desc_ms_os_20[] = {
+    // Set header: length, type, windows version, total length
+    U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR),
+    U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+
+    // Configuration subset header: length, type, configuration index, reserved, subset length
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION),
+    0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
+
+    // Function subset header: length, type, first interface, reserved, subset length
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION),
+    USBD_ITF_DFU_RT, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
+
+    // Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+    U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID),
+    'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
+
+    // Registry property descriptor: length, type
+    U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+    // wPropertyDataType (7 = REG_MULTI_SZ), wPropertyNameLength, then
+    // "DeviceInterfaceGUIDs\0" in UTF-16LE. libusb needs this GUID to be able
+    // to open the interface.
+    U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A),
+    'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
+    'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+    U16_TO_U8S_LE(0x0050), // wPropertyDataLength
+    // bPropertyData: "{5C2BC172-4544-499C-8035-062668700ABA}", generated for
+    // the sketch mode device and distinct from the bootloader's. Terminated
+    // twice, as REG_MULTI_SZ requires.
+    '{', 0x00, '5', 0x00, 'C', 0x00, '2', 0x00, 'B', 0x00, 'C', 0x00, '1', 0x00, '7', 0x00, '2', 0x00, '-', 0x00,
+    '4', 0x00, '5', 0x00, '4', 0x00, '4', 0x00, '-', 0x00, '4', 0x00, '9', 0x00, '9', 0x00, 'C', 0x00, '-', 0x00,
+    '8', 0x00, '0', 0x00, '3', 0x00, '5', 0x00, '-', 0x00, '0', 0x00, '6', 0x00, '2', 0x00, '6', 0x00, '6', 0x00,
+    '8', 0x00, '7', 0x00, '0', 0x00, '0', 0x00, 'A', 0x00, 'B', 0x00, 'A', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+// A wrong length field here is silently ignored by Windows, so fail the build
+// instead.
+TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
+
+// Invoked when a vendor control request is received. Windows uses the request
+// code advertised in the BOS descriptor to fetch the descriptor set above.
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request) {
+    // nothing to do with DATA & ACK stage
+    if (stage != CONTROL_STAGE_SETUP) return true;
+
+    if (request->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR &&
+        request->bRequest == VENDOR_REQUEST_MICROSOFT &&
+        request->wIndex == 7) {
+        // wTotalLength lives at offset 8 of the set header
+        uint16_t total_len;
+        memcpy(&total_len, desc_ms_os_20 + 8, 2);
+
+        return tud_control_xfer(rhport, request, (void *)(uintptr_t)desc_ms_os_20, total_len);
+    }
+
+    // stall unknown request
+    return false;
 }
 
 static void utox8(uint32_t val, char* s) {
