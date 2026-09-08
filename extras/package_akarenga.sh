@@ -39,8 +39,18 @@ do
     esac
 done
 
+# bootloaders/ has no burn recipe in platform.txt, so nothing in the IDE can
+# use it, and the UNO_R4 hex is still upstream's: it answers to 2341:0369,
+# which boards.txt no longer looks for. Ours lives in its own repository.
+#
+# drivers/ and post_install.bat install a WinUSB .inf that only matches
+# Arduino's VID/PID, so it never binds to this board. The bootloader and the
+# core declare Microsoft OS 2.0 descriptors instead, which Windows acts on
+# without any driver package at all.
+EXCLUDE_UNUSED="--exclude=$CORE_BASE/bootloaders --exclude=$CORE_BASE/drivers --exclude=$CORE_BASE/post_install.bat"
+
 cd ..
-tar --exclude-tag-all=.portenta_only $EXCLUDE_VARIANTS --exclude='*.vscode*' --exclude='*.tar.*' --exclude='*.json*' --exclude='*.git*' --exclude='*e2studio*' --exclude='*extras*' -cjhf $FILENAME $CORE_BASE
+tar --exclude-tag-all=.portenta_only $EXCLUDE_VARIANTS $EXCLUDE_UNUSED --exclude='*.vscode*' --exclude='*.tar.*' --exclude='*.json*' --exclude='*.git*' --exclude='*e2studio*' --exclude='*extras*' -cjhf $FILENAME $CORE_BASE
 cd -
 
 mv ../$FILENAME .
