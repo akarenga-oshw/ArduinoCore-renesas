@@ -1,8 +1,16 @@
 #!/bin/bash
 
 # Packages this core for the Arduino Boards Manager.
-# Produces the core archive plus extras/package_akarenga_index.json (fixed name,
-# so the URL published to users never changes).
+#
+# Produces the core archive and, beside it, an index fragment describing just
+# this one version. The published index lists every version ever released, so
+# the fragment is not the file users point their IDE at: merge it into the
+# index in the arduino-board-index repository with its merge-index.py.
+#
+# The fragment records the archive's SHA-256 and size, and tar stores each
+# file's mtime, so building again later - even from the same commit - yields a
+# different archive. Upload the archive and merge the fragment produced by the
+# same run.
 #
 # Unlike the upstream package.sh this script does not rewrite any tracked file:
 # boards.txt and platform.txt are shipped exactly as they are committed.
@@ -20,7 +28,7 @@ fi
 
 VERSION=`cat platform.txt | grep "version=" | cut -f2 -d"="`
 FILENAME=ArduinoCore-renesas_uno-$VERSION.tar.bz2
-INDEX=extras/package_akarenga_index.json
+INDEX=extras/package_akarenga_${VERSION}_index.json
 # git tag the release assets are attached to (see url in the template)
 TAG=renesas-$VERSION
 echo $VERSION
@@ -65,9 +73,16 @@ sed "s/%%FILENAME_UNO%%/${FILENAME}/g" |
 sed "s/%%CHECKSUM_UNO%%/${CHKSUM}/g" |
 sed "s/%%SIZE_UNO%%/${SIZE}/g" > $INDEX
 
+BOARD_INDEX=../arduino-board-index
+
 echo
 echo "$FILENAME  ($SIZE bytes)"
 echo "$INDEX"
 echo
 echo "publish with:"
+echo "  gh release upload $TAG $FILENAME -R akarenga-oshw/arduino-board-index --clobber"
+echo "  $BOARD_INDEX/merge-index.py $PWD/$INDEX"
+echo "  (cd $BOARD_INDEX && git commit -am 'add $VERSION to the index' && git push)"
+echo
+echo "the release has to exist first, otherwise:"
 echo "  gh release create $TAG $FILENAME -R akarenga-oshw/arduino-board-index -t $TAG"
