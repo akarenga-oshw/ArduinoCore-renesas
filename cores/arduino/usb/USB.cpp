@@ -233,14 +233,19 @@ void __SetupUSBDescriptor() {
 // descriptor and ignore the Microsoft part.
 //
 // The level a feature descriptor sits at decides what it applies to. This
-// device is composite, so WinUSB must be asked for on the DFU runtime
-// function ALONE: claiming it at device or configuration level would take the
-// CDC function with it and the serial port would disappear.
+// device is composite, so WinUSB is asked for on the DFU runtime function
+// ALONE:
 //
 //   Set header
 //   `- configuration subset
 //      `- function subset (bFirstInterface)
 //         `- feature descriptors  -> that one function
+//
+// Not at device or configuration level, which is how the bootloader does it and
+// is the obvious way to simplify this: there the compatible ID applies to the
+// whole device, and here that device includes the CDC function. Windows would
+// bind WinUSB over the serial port and it would vanish from the system. The
+// bootloader gets away with it by exposing one interface and nothing else.
 //
 // tud_descriptor_configuration_cb() above assigns interface numbers in order,
 // CDC first taking two, then DFU. Both are installed on the same condition
