@@ -175,8 +175,17 @@ Afterwards, check the generated result rather than assuming it worked:
   `CLOCK_SOURCE` and `UCK_SOURCE`.
 - Flash a sketch and confirm `SystemCoreClock` reads 48000000, and that an RTC
   reading tracks `millis()` to within tens of milliseconds over a few minutes.
-  Subclock trouble is invisible otherwise: USB and sketches run fine while the
-  RTC quietly does not advance.
+
+That second check is there because the RTC clock source is chosen by one line,
+`RTC_CLOCK_SOURCE` in `variants/MINIMA/pins_arduino.h`, and the core defaults to
+`RTC_CLOCK_SOURCE_LOCO` when it is absent (`libraries/RTC/src/RTC.cpp`). LOCO is
+an on-chip RC oscillator running thousands of ppm off, so losing that line costs
+minutes a day — and nothing reports it, since `RTC.begin()` and `isRunning()`
+both succeed on LOCO. A few minutes of comparison separates them by an order of
+magnitude.
+
+It says nothing about how accurate the crystal is. That needs a host clock as
+the reference and hours of running, not two oscillators on the same board.
 
 Because the configuration is shared, our 12MHz settings are in it too. Running
 `fsp_to_arduino.sh UNOWIFIR4` from this repository would hand a real UNO R4 WiFi
